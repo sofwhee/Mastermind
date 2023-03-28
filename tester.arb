@@ -1,0 +1,10 @@
+
+secret_code = "blah"
+
+while turn < 12 do 
+    # codebreaker turn
+    code_attempt = gets.chomp
+    if code_attempt == secret_code then break
+  
+    turn ++
+end
