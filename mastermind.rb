@@ -2,21 +2,82 @@ start_instructions = <<~INSTRUCTIONS
 Welcome to Mastermind!
 INSTRUCTIONS
 
-colour_hash = {
-  "1": "red",
-  "2": "blue",
-  "3": "green",
-  "4": "yellow",
-  "5": "orange",
-  "6": "purple"
-}
+key_pegs = [0, 1, 2]
 
-code_pegs = [1, 2, 3, 4, 5, 6]
-key_pegs = [0, 1]
+class Colour
 
-codebreaker = "player"
-codemaster = "PC"
-player = codemaster
+  attr_accessor :name
+  attr_accessor :code_number
+  attr_accessor :ruled_out
+  attr_accessor :attempted
+  attr_accessor :confirmed
+
+  def initialize(name, code_number)
+    @name = name
+    @code_number = code_number
+    @ruled_out = false
+    @attempted = []
+    @confirmed = []
+  end
+end
+
+code_colours = [
+red = Colour.new("red", 1), 
+blue = Colour.new("blue", 2), 
+green = Colour.new("green", 3), 
+yellow = Colour.new("yellow", 4), 
+orange = Colour.new("orange", 5), 
+purple = Colour.new("purple", 6)
+]
+
+col_hash = code_colours.map { |colour| [colour.code_number, colour.name] }.to_h
+
+class Board
+
+  attr_accessor :decoding_board
+
+  def initialize
+    @decoding_board = <<~BOARD
+    Attempts   Feedback
+    ___________________
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   | _ _ _ _ | _ _ _ _ |
+   |___________________|
+   BOARD
+  end
+
+  def add_guess(row, guess)
+    row += 1
+    new_row = "| #{guess[0]} #{guess[1]} #{guess[2]} #{guess[3]} | _ _ _ _ |"
+  
+    board_rows = @decoding_board.split("\n")
+    board_rows[row] = board_rows[row].replace new_row
+    board_rows = board_rows.join("\n")
+  end
+
+  def add_feedback(row, feed)
+    row += 1
+    to_replace = " _ _ _ _ "
+    replacement = " #{feed[0]} #{feed[1]} #{feed[2]} #{feed[3]} "
+  
+    board_rows = @decoding_board.split("\n")
+    board_rows[row].gsub!(to_replace, replacement)
+    board_rows = board_rows.join("\n")
+  end
+
+end
+
+board = Board.new()
 
 def process_feedback(code, guess)
   feedback = guess.map.with_index do |numb, i|
@@ -31,83 +92,117 @@ def process_feedback(code, guess)
   feedback
 end
 
-def add_guess(board, row, guess)
-  row += 1
-  new_row = "| #{guess[0]} #{guess[1]} #{guess[2]} #{guess[3]} | _ _ _ _ |"
+def choose_role()
+  role = 1
 
-  board_rows = board.split("\n")
-  board_rows[row] = board_rows[row].replace new_row
-  board = board_rows.join("\n")
+  loop do
+    puts "Would you like to be the codebreaker or codemaster? (enter 1 or 2)"
+    role = gets.chomp
+
+    if role == "1"
+      role = "codebreaker"
+      break
+    elsif role == "2"
+      role = "codemaster"
+      break
+    else
+      puts "Invalid input. Try again."
+    end
+  end
+
+  puts "You chose #{role}!"
+  role
 end
-
-def add_feedback(board, row, feed)
-  row += 1
-  to_replace = " _ _ _ _ "
-  replacement = " #{feed[0]} #{feed[1]} #{feed[2]} #{feed[3]} "
-
-  board_rows = board.split("\n")
-  board_rows[row].gsub!(to_replace, replacement)
-  board_rows = board_rows.join("\n")
-end
-
-# Board str is only a representation of data
-# Keep data elsewhere
-# Retrieve data elsewhere
 
 game_over = false
 
 # Start game
 while !game_over do
-  decoding_board = <<~BOARD
-   Attempts   Feedback
-   ___________________
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  | _ _ _ _ | _ _ _ _ |
-  |___________________|
-  BOARD
-
   puts start_instructions
-  # puts decoding_board
-  # puts colour_hash
+  
+  # Choose role
+  player = choose_role()
 
-  # puts "Codemaster, please enter your secret code now"
-  # puts "valid code: colour, colour, colour, colour"
-  # secret_code = gets.chomp
+  # Set up secret code
+  secret_code = []
 
-  secret_code = [rand(6), rand(6), rand(6), rand(6)]
+  if player == "codebreaker"
+    secret_code = [rand(6), rand(6), rand(6), rand(6)]
+  elsif player == "codemaster"
+    puts "Codemaster, please enter your secret code now"
+    puts col_hash
+    puts "valid code: <colour>, <colour>, <colour>, <colour>"
+    secret_code = gets.chomp.gsub(" ", "").split(",")
+    secret_code.map! {|numb| numb.to_i}
+  end
 
+  # Computer memory
+  code_attempts = []
+  feedbacks = []
+  feedback = []
 
   # turn loop
   turn = 1
 
-  while turn < 13 do 
-    # codebreaker turn
-    puts colour_hash
-    puts "valid code: <colour>, <colour>, <colour>, <colour>"
-    code_attempt = gets.chomp.gsub(" ", "").split(",")
-    code_attempt.map! {|numb| numb.to_i}
-
-    decoding_board = add_guess(decoding_board, turn, code_attempt)
-
-    # codemaster turn
-    # feedback = gets.chomp.gsub(" ", "").split(",")
-    feedback = process_feedback(secret_code, code_attempt)
-    decoding_board = add_feedback(decoding_board, turn, feedback)
+  while turn < 13 do
+    # codebreaker
+    if player == "codebreaker"
+      puts col_hash
+      puts "valid code: <colour>, <colour>, <colour>, <colour>"
+      code_attempt = gets.chomp.gsub(" ", "").split(",")
+      code_attempt.map! {|numb| numb.to_i}
     
-    puts decoding_board
+    elsif player == "codemaster" && code_attempts.empty?
+      code_attempt = [rand(6), rand(6), rand(6), rand(6)]
+
+    elsif player == "codemaster"
+      # read
+      for i in 0..3
+        code_colour = code_colours[code_attempt[i] - 1]
+
+        case feedback[i]
+        when 0
+          code_colour.ruled_out = true
+        when 1
+          next if code_colour.confirmed.include?(i)
+          code_colour.confirmed << i
+        when 2
+          code_colour.attempted << i
+        end
+
+      end
+
+      # write
+
+      for i in 0..3
+        if feedback[i] == 1
+          next
+        else
+          attemptable = code_colours.select {|colour| !colour.ruled_out}
+          attemptable = attemptable.select {|colour| !colour.attempted.include?(i)}
+
+          best_number = attemptable.reduce do |acc, colour|
+            acc.attempted.count > colour.attempted.count ? acc : colour
+          end
+
+          code_attempt[i] = best_number.code_number  
+        end
+      end
+    end
+
+    # Update board
+    board.decoding_board = board.add_guess(turn, code_attempt)
+    feedback = process_feedback(secret_code, code_attempt)
+    board.decoding_board = board.add_feedback(turn, feedback)
+    puts board.decoding_board
+
+    # win?
     break if code_attempt == secret_code;
+    
+    # turn end
     turn += 1
     p "turn end"
+    p feedback
   end
 
   # Round end
@@ -141,6 +236,14 @@ while !game_over do
     retry_answer = gets.chomp.downcase
 
     if retry_answer == 'y'
+      code_colours = [
+        red = Colour.new("red", 1), 
+        blue = Colour.new("blue", 2), 
+        green = Colour.new("green", 3), 
+        yellow = Colour.new("yellow", 4), 
+        orange = Colour.new("orange", 5), 
+        purple = Colour.new("purple", 6)
+        ]
       break
     elsif retry_answer == 'n'
       game_over = true
